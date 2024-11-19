@@ -44,3 +44,29 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Todo deleted successfully"})
 }
+
+// SearchTodos searches todos by title or description
+func SearchTodos(w http.ResponseWriter, r *http.Request) {
+	// ดึงค่าพารามิเตอร์ query string ชื่อ 'search'
+	searchTerm := r.URL.Query().Get("search")
+
+	// ถ้าไม่มีคำค้นหา ให้ตอบกลับด้วยข้อความแนะนำ
+	if searchTerm == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Search term is required"})
+		return
+	}
+
+	var todos []models.Todo
+	// ค้นหา todos ที่มี title หรือ description ตรงกับคำค้นหา
+	// ใช้ method Where ของ GORM เพื่อกรองข้อมูล
+	if err := database.DB.Where("title LIKE ? OR description LIKE ?", "%"+searchTerm+"%", "%"+searchTerm+"%").Find(&todos).Error; err != nil {
+		// ถ้าเกิดข้อผิดพลาดในการค้นหา
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Error searching todos"})
+		return
+	}
+
+	// ส่งข้อมูลที่ค้นหากลับไปเป็น JSON
+	json.NewEncoder(w).Encode(todos)
+}
